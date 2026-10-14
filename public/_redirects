@@ -1,0 +1,4 @@
+# Cloudflare Pages — SPA fallback.
+# Every path that does not match a static asset should serve index.html
+# so React Router routes never 404 on refresh or direct navigation.
+/*    /index.html   200
