@@ -6,6 +6,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { ShopProvider } from './contexts/ShopContext';
 import DashboardLayout from './layouts/DashboardLayout';
 import { LoadingState } from './components/ui/States';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // ── Code-split pages ────────────────────────────────────────
 const Login = lazy(() => import('./pages/Login'));
@@ -82,16 +83,18 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          <ShopProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </ShopProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <ShopProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ShopProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

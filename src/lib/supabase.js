@@ -1,27 +1,45 @@
 import { createClient } from '@supabase/supabase-js';
 import { demoClient } from './demoClient';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Clean and normalize environment variables
+const cleanEnv = (val) => {
+  if (!val || typeof val !== 'string') return '';
+  return val.trim().replace(/^["']|["']$/g, '');
+};
 
-/**
- * True only when both env vars are present.
- * Without them the app runs in a clearly-labelled DEMO MODE
- * (in-memory sample data) so every screen can be explored.
- * With them, ALL data flows through real Supabase + RLS.
- */
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+const rawUrl = cleanEnv(import.meta.env.VITE_SUPABASE_URL);
+const rawKey = cleanEnv(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
-export const isDemoMode = !isSupabaseConfigured;
+function normalizeSupabaseUrl(url) {
+  if (!url) return '';
+  let clean = url.trim().replace(/^["']|["']$/g, '');
+  if (clean && !clean.includes('.')) {
+    // User passed just the project ref id (e.g. "qbsgxlnsjzgzklointrn")
+    clean = `https://${clean}.supabase.co`;
+  } else if (clean && !/^https?:\/\//i.test(clean)) {
+    clean = `https://${clean}`;
+  }
+  return clean.replace(/\/+$/, '');
+}
 
-/**
- * Single Supabase client (or the demo shim).
- * Auth: email/password with persistent sessions (localStorage).
- * Data access is protected by Row Level Security — the anon key is safe to ship.
- * NEVER use the service_role key in frontend code.
- */
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+function isValidHttpUrl(string) {
+  try {
+    const url = new URL(string);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+const normalizedUrl = normalizeSupabaseUrl(rawUrl);
+const isPlaceholder = !normalizedUrl || normalizedUrl.includes('your-project-ref.supabase.co') || rawKey.includes('your-anon-public-key');
+
+let client = demoClient;
+let configured = false;
+
+if (normalizedUrl && rawKey && !isPlaceholder && isValidHttpUrl(normalizedUrl)) {
+  try {
+    client = createClient(normalizedUrl, rawKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -32,5 +50,19 @@ export const supabase = isSupabaseConfigured
         headers: { 'x-application-name': 'shop-manager' },
       },
       realtime: { params: { eventsPerSecond: 2 } },
-    })
-  : demoClient;
+    });
+    configured = true;
+  } catch (err) {
+    console.error('Supabase initialization failed, falling back to Demo Mode:', err);
+    client = demoClient;
+    configured = false;
+  }
+}
+
+/**
+ * True only when valid Supabase URL and Key are successfully configured.
+ * Without them the app runs in DEMO MODE so the app never shows a blank screen.
+ */
+export const isSupabaseConfigured = configured;
+export const isDemoMode = !configured;
+export const supabase = client;

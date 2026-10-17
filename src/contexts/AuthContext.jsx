@@ -11,9 +11,15 @@ export function AuthProvider({ children }) {
 
   const loadProfile = useCallback(async (userId) => {
     if (!supabase || !userId) return null;
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    setProfile(data || null);
-    return data;
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      setProfile(data || null);
+      return data;
+    } catch (e) {
+      console.warn('Could not load profile:', e);
+      setProfile(null);
+      return null;
+    }
   }, []);
 
   useEffect(() => {
@@ -24,16 +30,23 @@ export function AuthProvider({ children }) {
 
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (!mounted) return;
-      setSession(s);
-      if (s?.user) await loadProfile(s.user.id);
-      if (mounted) setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session: s } = {} }) => {
+        if (!mounted) return;
+        setSession(s || null);
+        if (s?.user) await loadProfile(s.user.id);
+      })
+      .catch((err) => {
+        console.warn('Auth session check error:', err);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
       if (!mounted) return;
-      setSession(s);
+      setSession(s || null);
       if (s?.user) {
         await loadProfile(s.user.id);
       } else {
