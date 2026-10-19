@@ -1,214 +1,189 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { UserPlus, X, User } from 'lucide-react';
+import { User, Phone } from 'lucide-react';
 import { useDebounce } from '../../hooks/useUtilities';
-import { searchCustomersLite, createCustomer } from '../../services/customersService';
-import { useToast } from '../../contexts/ToastContext';
-import Modal from '../ui/Modal';
-import Button from '../ui/Button';
-import { FormField, Input, TextArea } from '../ui/Input';
-import { validateMobile, validateRequired, hasErrors, runValidation } from '../../utils/validators';
+import { searchCustomersLite } from '../../services/customersService';
 
 /**
- * POS customer picker:
- *  - search existing customers (debounced)
- *  - quick-create a new customer inline
- *  - walk-in customer fallback
+ * Super-fast POS customer input:
+ *  - Directly type Customer Name and Mobile Number (no modal/popup needed!)
+ *  - Quick "Walk-in" button for 1-click fallback
+ *  - Smart suggestion dropdown if typing an existing customer
  */
-export default function CustomerSelector({ selected, onSelect }) {
+export default function CustomerSelector({ customer, onChange }) {
   const [query, setQuery] = useState('');
-  const [options, setOptions] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', mobile: '', email: '', address: '' });
-  const [errors, setErrors] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapRef = useRef(null);
-  const debounced = useDebounce(query, 250);
-  const { toast } = useToast();
 
+  const debounced = useDebounce(query, 250);
+
+  // Search suggestions when typing
   useEffect(() => {
-    if (!open) return undefined;
+    if (!query.trim() || !showSuggestions) {
+      setSuggestions([]);
+      return;
+    }
     let active = true;
-    searchCustomersLite(debounced, 7)
-      .then((rows) => active && setOptions(rows))
-      .catch(() => active && setOptions([]));
+    searchCustomersLite(debounced, 5)
+      .then((rows) => {
+        if (active) setSuggestions(rows || []);
+      })
+      .catch(() => {
+        if (active) setSuggestions([]);
+      });
     return () => {
       active = false;
     };
-  }, [debounced, open]);
+  }, [debounced, showSuggestions, query]);
 
+  // Click outside to close suggestions
   useEffect(() => {
     const onClickAway = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
     };
     document.addEventListener('mousedown', onClickAway);
     return () => document.removeEventListener('mousedown', onClickAway);
   }, []);
 
-  const saveCustomer = async () => {
-    const errs = runValidation({
-      name: () => validateRequired(form.name, 'Customer name'),
-      mobile: () => validateMobile(form.mobile),
-    });
-    setErrors(errs);
-    if (hasErrors(errs)) return;
+  const handleNameChange = (val) => {
+    onChange({ ...(customer || {}), name: val, id: null });
+    setQuery(val);
+    setShowSuggestions(true);
+  };
 
-    setSaving(true);
-    try {
-      const created = await createCustomer({
-        name: form.name.trim(),
-        mobile: form.mobile.replace(/\D/g, ''),
-        email: form.email.trim(),
-        address: form.address.trim(),
-      });
-      toast.success('Customer created successfully');
-      onSelect(created);
-      setOpen(false);
-      setQuery('');
-      setCreating(false);
-      setForm({ name: '', mobile: '', email: '', address: '' });
-      setErrors({});
-    } catch (err) {
-      toast.error(err.message?.includes('duplicate') || err.message?.includes('unique') ? 'A customer with this mobile number already exists' : 'Could not create customer');
-    } finally {
-      setSaving(false);
-    }
+  const handleMobileChange = (val) => {
+    const cleanMobile = val.replace(/\D/g, '').slice(0, 10);
+    onChange({ ...(customer || {}), mobile: cleanMobile, id: null });
+    setQuery(cleanMobile);
+    setShowSuggestions(true);
+  };
+
+  const selectSuggestion = (s) => {
+    onChange({
+      id: s.id,
+      name: s.name,
+      mobile: s.mobile || '',
+      email: s.email || '',
+      address: s.address || '',
+    });
+    setShowSuggestions(false);
+  };
+
+  const setWalkIn = () => {
+    onChange({
+      id: null,
+      name: 'Walk-in Customer',
+      mobile: '',
+    });
+    setShowSuggestions(false);
+  };
+
+  const clearCustomer = () => {
+    onChange({
+      id: null,
+      name: '',
+      mobile: '',
+    });
+    setShowSuggestions(false);
   };
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
-      <div className="flex gap-2">
-        {selected ? (
-          <div className="flex items-center gap-2 w-full" style={{ padding: '10px 13px', borderRadius: 'var(--radius-md)', border: '1px solid rgb(var(--primary-rgb) / 0.35)', background: 'rgb(var(--primary-rgb) / 0.07)' }}>
-            <User size={17} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 750, fontSize: '0.92rem' }}>{selected.name}</div>
-              <div className="faint" style={{ fontSize: '0.78rem' }}>
-                {selected.mobile || 'No mobile'}
-              </div>
-            </div>
-            <button className="icon-btn" style={{ width: 30, height: 30 }} onClick={() => onSelect(null)} aria-label="Clear customer">
-              <X size={14} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-faint)', fontWeight: 600 }}>
+          Customer Info (Directly enter name & mobile)
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            style={{ padding: '3px 10px', fontSize: '0.78rem' }}
+            onClick={setWalkIn}
+          >
+            Walk-in (Default)
+          </button>
+          {(customer?.name || customer?.mobile) && (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              style={{ padding: '3px 8px', fontSize: '0.78rem', color: 'var(--text-faint)' }}
+              onClick={clearCustomer}
+              title="Clear customer fields"
+            >
+              Clear
             </button>
-          </div>
-        ) : (
-          <>
-            <div className="input-wrap" style={{ flex: 1 }}>
-              <span className="input-wrap__icon">
-                <User size={16} />
-              </span>
-              <input
-                className="input"
-                placeholder="Search customer by name or mobile…"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setOpen(true);
-                }}
-                onFocus={() => setOpen(true)}
-              />
-            </div>
-            <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
-              <UserPlus size={15} /> New
-            </Button>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
-      {open && !selected && (
-        <div className="selector-dropdown">
-          <button
-            className="selector-option"
-            onClick={() => {
-              onSelect({ name: 'Walk-in Customer', mobile: '' });
-              setOpen(false);
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+        {/* Customer Name */}
+        <div className="input-wrap">
+          <span className="input-wrap__icon">
+            <User size={16} />
+          </span>
+          <input
+            className="input"
+            placeholder="Customer Name (optional)"
+            value={customer?.name || ''}
+            onChange={(e) => handleNameChange(e.target.value)}
+            onFocus={() => {
+              if (customer?.name) {
+                setQuery(customer.name);
+                setShowSuggestions(true);
+              }
             }}
-          >
-            <div>
-              <div className="selector-option__name">Walk-in Customer</div>
-              <div className="selector-option__meta">No details required</div>
-            </div>
-          </button>
-          {options.map((c) => (
+          />
+        </div>
+
+        {/* Mobile Number */}
+        <div className="input-wrap">
+          <span className="input-wrap__icon">
+            <Phone size={16} />
+          </span>
+          <input
+            className="input"
+            placeholder="Mobile (10 digits for WhatsApp)"
+            type="tel"
+            maxLength={10}
+            value={customer?.mobile || ''}
+            onChange={(e) => handleMobileChange(e.target.value)}
+            onFocus={() => {
+              if (customer?.mobile) {
+                setQuery(customer.mobile);
+                setShowSuggestions(true);
+              }
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Autocomplete suggestions if existing customer matches */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="selector-dropdown" style={{ zIndex: 90 }}>
+          <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-faint)', borderBottom: '1px solid var(--glass-border)' }}>
+            Existing customers found:
+          </div>
+          {suggestions.map((s) => (
             <button
-              key={c.id}
+              key={s.id}
+              type="button"
               className="selector-option"
-              onClick={() => {
-                onSelect(c);
-                setOpen(false);
-                setQuery('');
-              }}
+              onClick={() => selectSuggestion(s)}
             >
-              <div>
-                <div className="selector-option__name">{c.name}</div>
+              <User size={15} style={{ opacity: 0.6 }} />
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <div className="selector-option__name">{s.name}</div>
                 <div className="selector-option__meta">
-                  {c.mobile} • {c.total_orders} orders
+                  {s.mobile || 'No mobile'} {s.total_orders ? `• ${s.total_orders} orders` : ''}
                 </div>
               </div>
             </button>
           ))}
-          {options.length === 0 && query.trim() && (
-            <div className="selector-option" style={{ cursor: 'default' }}>
-              <div className="muted" style={{ fontSize: '0.86rem' }}>
-                No customers found. Create one with “New”.
-              </div>
-            </div>
-          )}
         </div>
       )}
-
-      <Modal
-        open={creating}
-        onClose={() => setCreating(false)}
-        title="New Customer"
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveCustomer} loading={saving}>
-              Save Customer
-            </Button>
-          </>
-        }
-      >
-        <div className="form-grid">
-          <FormField label="Customer Name" required error={errors.name} className="form-group--full">
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Rahul Sharma"
-              error={errors.name}
-            />
-          </FormField>
-          <FormField label="Mobile Number" required error={errors.mobile} hint="10 digits — used for WhatsApp billing">
-            <Input
-              value={form.mobile}
-              onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-              placeholder="9876543210"
-              inputMode="numeric"
-              error={errors.mobile}
-            />
-          </FormField>
-          <FormField label="Email" error={errors.email}>
-            <Input
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="optional"
-              type="email"
-            />
-          </FormField>
-          <FormField label="Address" className="form-group--full">
-            <TextArea
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="optional"
-              style={{ minHeight: 70 }}
-            />
-          </FormField>
-        </div>
-      </Modal>
     </div>
   );
 }

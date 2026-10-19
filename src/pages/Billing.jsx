@@ -31,7 +31,7 @@ export default function Billing() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [customer, setCustomer] = useState(null);
+  const [customer, setCustomer] = useState({ name: '', mobile: '', id: null });
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -219,8 +219,8 @@ export default function Billing() {
 
       const invoice = await createInvoice({
         customer_id: customer?.id || null,
-        customer_name: customer?.name || 'Walk-in Customer',
-        customer_mobile: customer?.mobile || '',
+        customer_name: customer?.name?.trim() || 'Walk-in Customer',
+        customer_mobile: (customer?.mobile || '').replace(/\D/g, '').slice(0, 10),
         customer_email: customer?.email || '',
         customer_address: customer?.address || '',
         subtotal: Number(totals.subtotal.toFixed(2)),
@@ -253,7 +253,7 @@ export default function Billing() {
   const startNewBill = () => {
     setCreatedInvoice(null);
     setCart([]);
-    setCustomer(null);
+    setCustomer({ name: '', mobile: '', id: null });
     setOrderDiscount('');
     setNotes('');
     setPaymentMethod('cash');
@@ -323,7 +323,7 @@ export default function Billing() {
         <div className="pos-products">
           <GlassCard>
             <CardHeader title="Customer" icon={<ScanBarcode size={19} />} />
-            <CustomerSelector selected={customer} onSelect={setCustomer} />
+            <CustomerSelector customer={customer} onChange={setCustomer} />
           </GlassCard>
 
           <div className="mt-4">
@@ -401,7 +401,7 @@ export default function Billing() {
             }
           />
 
-          {customer ? (
+          {customer && (customer.name?.trim() || customer.mobile?.trim()) ? (
             <div
               className="flex items-center justify-between"
               style={{
@@ -416,7 +416,7 @@ export default function Billing() {
               <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
                 <User size={15} />
                 <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {customer.name}
+                  {customer.name?.trim() || 'Walk-in Customer'}
                 </span>
                 {customer.mobile && (
                   <span className="faint" style={{ fontSize: '0.78rem' }}>
@@ -427,9 +427,9 @@ export default function Billing() {
               <button
                 className="icon-btn"
                 style={{ width: 24, height: 24 }}
-                onClick={() => setCustomer(null)}
-                title="Remove customer"
-                aria-label="Remove customer"
+                onClick={() => setCustomer({ name: '', mobile: '', id: null })}
+                title="Reset customer"
+                aria-label="Reset customer"
               >
                 <X size={13} />
               </button>
