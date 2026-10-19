@@ -1,15 +1,16 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useEscape, useLockBodyScroll } from '../../hooks/useUtilities';
 
-/** Glassmorphism modal with overlay, header, scrollable body and footer. */
+/** Glassmorphism modal with overlay, header, scrollable body and footer. Always portaled to document.body. */
 export default function Modal({ open, onClose, title, children, footer, size = 'md', closeOnOverlay = true }) {
   useLockBodyScroll(open);
   useEscape(onClose, open);
 
   if (!open) return null;
 
-  return (
+  const content = (
     <div
       className="modal-overlay"
       onMouseDown={(e) => {
@@ -28,16 +29,18 @@ export default function Modal({ open, onClose, title, children, footer, size = '
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }
 
-/** Right-side drawer panel. */
+/** Right-side drawer panel. Always portaled to document.body. */
 export function Drawer({ open, onClose, title, children }) {
   useLockBodyScroll(open);
   useEscape(onClose, open);
 
   if (!open) return null;
 
-  return (
+  const content = (
     <>
       <div className="drawer-overlay" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-modal="true">
@@ -51,6 +54,8 @@ export function Drawer({ open, onClose, title, children }) {
       </aside>
     </>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }
 
 /** Confirmation dialog for destructive actions. */

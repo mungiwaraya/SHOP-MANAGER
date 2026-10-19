@@ -63,8 +63,11 @@ export default function CustomerSelector({ selected, onSelect }) {
       });
       toast.success('Customer created successfully');
       onSelect(created);
+      setOpen(false);
+      setQuery('');
       setCreating(false);
       setForm({ name: '', mobile: '', email: '', address: '' });
+      setErrors({});
     } catch (err) {
       toast.error(err.message?.includes('duplicate') || err.message?.includes('unique') ? 'A customer with this mobile number already exists' : 'Could not create customer');
     } finally {

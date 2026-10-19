@@ -40,10 +40,22 @@ export async function getCustomer(id) {
 }
 
 export async function createCustomer(payload) {
-  const { data: { user } } = await supabase.auth.getUser();
+  let userId = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    userId = data?.user?.id || null;
+  } catch {
+    userId = null;
+  }
+
+  const insertPayload = { ...payload };
+  if (userId) {
+    insertPayload.user_id = userId;
+  }
+
   const { data, error } = await supabase
     .from('customers')
-    .insert({ ...payload, user_id: user.id })
+    .insert(insertPayload)
     .select()
     .single();
   if (error) throw error;

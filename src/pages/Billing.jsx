@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2, ScanBarcode, CheckCircle2, RotateCcw, PackageSearch, Percent } from 'lucide-react';
+import { ShoppingCart, Trash2, ScanBarcode, CheckCircle2, RotateCcw, PackageSearch, Percent, User, X } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { GlassCard, CardHeader } from '../components/ui/Cards';
@@ -400,6 +400,54 @@ export default function Billing() {
               ) : null
             }
           />
+
+          {customer ? (
+            <div
+              className="flex items-center justify-between"
+              style={{
+                padding: '8px 12px',
+                marginBottom: '14px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgb(var(--primary-rgb) / 0.08)',
+                border: '1px solid rgb(var(--primary-rgb) / 0.25)',
+                fontSize: '0.86rem',
+              }}
+            >
+              <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
+                <User size={15} />
+                <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {customer.name}
+                </span>
+                {customer.mobile && (
+                  <span className="faint" style={{ fontSize: '0.78rem' }}>
+                    ({customer.mobile})
+                  </span>
+                )}
+              </div>
+              <button
+                className="icon-btn"
+                style={{ width: 24, height: 24 }}
+                onClick={() => setCustomer(null)}
+                title="Remove customer"
+                aria-label="Remove customer"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '6px 10px',
+                marginBottom: '14px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'rgb(var(--primary-rgb) / 0.04)',
+                fontSize: '0.8rem',
+                color: 'var(--text-faint)',
+              }}
+            >
+              Billed to: <strong>Walk-in Customer</strong>
+            </div>
+          )}
 
           {cart.length === 0 ? (
             <EmptyState
