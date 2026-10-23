@@ -87,6 +87,9 @@ export async function createInvoice(payload) {
     p_payment_method: payload.payment_method,
     p_payment_status: payload.payment_status || 'paid',
     p_notes: payload.notes || '',
+    p_transaction_reference: payload.transaction_reference || '',
+    p_final_amount_override: payload.final_amount_override ?? null,
+    p_calculated_amount: payload.calculated_amount ?? payload.total_amount,
     p_items: payload.items,
   });
   if (error) throw error;

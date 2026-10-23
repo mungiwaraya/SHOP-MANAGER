@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2, ScanBarcode, CheckCircle2, RotateCcw, PackageSearch, Percent, User, X } from 'lucide-react';
+import { ShoppingCart, Trash2, ScanBarcode, CheckCircle2, RotateCcw, PackageSearch, Percent, User, X, Hash, IndianRupee, AlertCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { GlassCard, CardHeader } from '../components/ui/Cards';
@@ -42,6 +42,8 @@ export default function Billing() {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [createdInvoice, setCreatedInvoice] = useState(null);
+  const [finalAmountOverride, setFinalAmountOverride] = useState('');
+  const [transactionId, setTransactionId] = useState('');
 
   const debounced = useDebounce(query, 280);
 
@@ -178,6 +180,13 @@ export default function Billing() {
     const taxable = afterItems - orderDiscAmt;
     const taxRate = settings?.tax_enabled ? Number(settings.tax_rate || 0) : 0;
     const taxAmt = (taxable * taxRate) / 100;
+    const calculated = taxable + taxAmt;
+
+    // Final override — bargaining feature
+    const overrideVal = finalAmountOverride.trim() !== '' ? Number(finalAmountOverride) : null;
+    const isOverrideActive = overrideVal !== null && !isNaN(overrideVal) && overrideVal !== calculated;
+    const finalTotal = isOverrideActive ? overrideVal : calculated;
+
     return {
       subtotal,
       itemDiscounts,
@@ -186,9 +195,12 @@ export default function Billing() {
       discountTotal: itemDiscounts + orderDiscAmt,
       taxAmt,
       taxRate,
-      total: taxable + taxAmt,
+      calculated,
+      total: finalTotal,
+      isOverrideActive,
+      overrideVal,
     };
-  }, [cart, orderDiscount, settings]);
+  }, [cart, orderDiscount, settings, finalAmountOverride]);
 
   const canGenerate = cart.length > 0 && !saving;
 
@@ -230,6 +242,9 @@ export default function Billing() {
         payment_method: paymentMethod,
         payment_status: paymentStatus,
         notes: notes.trim(),
+        transaction_reference: transactionId.trim(),
+        final_amount_override: totals.isOverrideActive ? Number(totals.total.toFixed(2)) : null,
+        calculated_amount: Number(totals.calculated.toFixed(2)),
         items: itemsPayload,
       });
 
@@ -259,6 +274,8 @@ export default function Billing() {
     setPaymentMethod('cash');
     setPaymentStatus('paid');
     setQuery('');
+    setFinalAmountOverride('');
+    setTransactionId('');
   };
 
   // ── Post-sale modal ───────────────────────────────────────
@@ -561,8 +578,57 @@ export default function Billing() {
                   </div>
                 )}
                 <div className="summary-row summary-row--total">
-                  <span>Total</span>
-                  <span>{formatCurrency(totals.total, currency)}</span>
+                  <span>Calculated Total</span>
+                  <span style={{ textDecoration: totals.isOverrideActive ? 'line-through' : 'none', opacity: totals.isOverrideActive ? 0.5 : 1 }}>
+                    {formatCurrency(totals.calculated, currency)}
+                  </span>
+                </div>
+
+                {/* ── Final Amount Override (Bargaining) ── */}
+                <div className="override-block">
+                  <div className="override-block__label">
+                    <IndianRupee size={13} />
+                    Final Amount Override
+                    <span className="override-block__hint">customer bargain ke liye</span>
+                  </div>
+                  <div className="input-wrap">
+                    <span className="input-wrap__icon">
+                      <IndianRupee size={15} />
+                    </span>
+                    <input
+                      className={`input ${totals.isOverrideActive ? 'override-active' : ''}`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder={`Default: ${formatCurrency(totals.calculated, currency)}`}
+                      value={finalAmountOverride}
+                      onChange={(e) => setFinalAmountOverride(e.target.value)}
+                    />
+                    {finalAmountOverride && (
+                      <button
+                        className="input-wrap__suffix icon-btn"
+                        style={{ width: 28, height: 28, border: 'none' }}
+                        onClick={() => setFinalAmountOverride('')}
+                        title="Clear override"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                  {totals.isOverrideActive && (
+                    <div className={`override-block__status ${totals.overrideVal > totals.calculated ? 'override-block__status--warn' : 'override-block__status--ok'}`}>
+                      {totals.overrideVal > totals.calculated
+                        ? <><AlertCircle size={12} /> Override calculated se zyada hai</>
+                        : <><CheckCircle2 size={12} /> Bargained price active — saving {formatCurrency(totals.calculated - totals.overrideVal, currency)}</>
+                      }
+                    </div>
+                  )}
+                  {totals.isOverrideActive && (
+                    <div className="summary-row summary-row--grand">
+                      <span>Final Amount</span>
+                      <span>{formatCurrency(totals.total, currency)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -590,6 +656,27 @@ export default function Billing() {
                       { value: 'partial', label: 'Partial' },
                     ]}
                     style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+
+              {/* ── Transaction ID / Reference ── */}
+              <div className="mt-3">
+                <label className="form-label">Transaction ID / Reference <span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>(optional)</span></label>
+                <div className="input-wrap mt-2">
+                  <span className="input-wrap__icon">
+                    <Hash size={15} />
+                  </span>
+                  <input
+                    className="input"
+                    placeholder={
+                      paymentMethod === 'upi' ? 'UPI Transaction ID / UTR number'
+                      : paymentMethod === 'card' ? 'Card approval code'
+                      : paymentMethod === 'bank_transfer' ? 'Bank reference / NEFT / IMPS ref'
+                      : 'Receipt number or reference'
+                    }
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
                   />
                 </div>
               </div>

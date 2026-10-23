@@ -1904,12 +1904,13 @@ h4 {
   padding: 30px;
   font-size: 0.88rem;
   border: 1px solid var(--glass-border);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .invoice-preview h1,
 .invoice-preview h2,
 .invoice-preview h3 {
-  color: #16161d;
+  color: #0f0f16;
 }
 
 .invoice-preview__header {
@@ -1930,24 +1931,25 @@ h4 {
   color: #fff;
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 1.25rem;
+  font-weight: 900;
+  font-size: 1.35rem;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .invoice-preview table {
   width: 100%;
   border-collapse: collapse;
   margin: 18px 0;
-  font-size: 0.855rem;
+  font-size: 0.845rem;
 }
 
 .invoice-preview table th {
   text-align: left;
   padding: 10px 11px;
-  background: #f4f4f7;
-  color: #55556a;
-  font-size: 0.72rem;
+  background: #111114;
+  color: #ffffff;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   font-weight: 800;
@@ -1956,29 +1958,40 @@ h4 {
 .invoice-preview table td {
   padding: 11px;
   border-bottom: 1px solid #ececf1;
+  vertical-align: middle;
+}
+
+.invoice-preview table tbody tr:nth-child(even) td {
+  background: #fafafc;
 }
 
 .invoice-preview__totals {
   margin-left: auto;
-  width: min(320px, 100%);
+  width: min(340px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  background: #f5f5fa;
+  border-radius: 10px;
+  padding: 16px 18px;
+  border: 1px solid #e8e8f0;
 }
 
 .invoice-preview__total-row {
   display: flex;
   justify-content: space-between;
-  color: #55556a;
-  font-weight: 620;
+  color: #6b6b80;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .invoice-preview__total-row--grand {
-  font-size: 1.14rem;
-  font-weight: 800;
-  color: #16161d;
-  padding-top: 9px;
-  border-top: 2px solid #ececf1;
+  font-size: 1.12rem;
+  font-weight: 900;
+  color: #0f0f16;
+  padding-top: 10px;
+  border-top: 2px solid #dcdceb;
+  margin-top: 4px;
 }
 
 .invoice-preview__footer {
@@ -1986,8 +1999,77 @@ h4 {
   padding-top: 18px;
   border-top: 2px solid #ececf1;
   color: #6b6b80;
-  font-size: 0.825rem;
+  font-size: 0.81rem;
   line-height: 1.7;
+}
+
+/* ── Final Amount Override block ─────────────────────────── */
+.override-block {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgb(var(--primary-rgb) / 0.04);
+  border: 1px dashed rgb(var(--primary-rgb) / 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.override-block__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: var(--text-muted);
+}
+
+.override-block__hint {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.input.override-active {
+  border-color: rgb(91, 124, 250, 0.7);
+  box-shadow: 0 0 0 3px rgb(91, 124, 250, 0.12);
+  background: rgb(91, 124, 250, 0.04);
+  font-weight: 800;
+}
+
+.override-block__status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 9px;
+  border-radius: 8px;
+}
+
+.override-block__status--ok {
+  color: var(--success);
+  background: rgb(var(--success-rgb) / 0.1);
+}
+
+.override-block__status--warn {
+  color: var(--warning);
+  background: rgb(var(--warning-rgb) / 0.1);
+}
+
+.override-block__status svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.summary-row--grand {
+  font-size: 1.22rem;
+  font-weight: var(--font-weight-black);
+  color: var(--accent-color);
+  padding-top: 10px;
+  border-top: 2px dashed rgb(91, 124, 250, 0.3);
 }
 
 /* Setup screen (missing env vars) */

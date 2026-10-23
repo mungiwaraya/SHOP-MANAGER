@@ -369,6 +369,9 @@ function rpcCreateInvoice(args) {
     payment_status: args.p_payment_status || 'paid',
     status: 'completed',
     notes: args.p_notes || '',
+    transaction_reference: args.p_transaction_reference || '',
+    final_amount_override: args.p_final_amount_override ?? null,
+    calculated_amount: args.p_calculated_amount ?? Number(args.p_total_amount),
     created_at: iso(),
     updated_at: iso(),
   };
